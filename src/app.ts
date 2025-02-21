@@ -5,7 +5,6 @@
 import { readFileSync, writeFileSync, STDIO } from "javy/fs";
 import {
   EmitHint,
-  FunctionDeclaration,
   NewLineKind,
   TypeNode,
   ScriptKind,
@@ -31,6 +30,7 @@ import { argName, colName } from "./drivers/utlis";
 import { Driver as Sqlite3Driver } from "./drivers/better-sqlite3";
 import { Driver as PgDriver } from "./drivers/pg";
 import { Driver as PostgresDriver } from "./drivers/postgres";
+import { Driver as BunSqlDriver } from "./drivers/bun-sql";
 import { Mysql2Options, Driver as MysqlDriver } from "./drivers/mysql2";
 
 // Read input from stdin
@@ -89,6 +89,9 @@ function createNodeGenerator(options: Options): Driver {
     }
     case "postgres": {
       return new PostgresDriver();
+    }
+    case "bun-sql": {
+      return new BunSqlDriver();
     }
     case "better-sqlite3": {
       return new Sqlite3Driver();

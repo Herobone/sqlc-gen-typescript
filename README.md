@@ -26,7 +26,7 @@ sql:
 
 ## Supported engines and drivers
 
-- PostgreSQL via [pg](https://www.npmjs.com/package/pg) or [postgres](https://www.npmjs.com/package/postgres).
+- PostgreSQL via [pg](https://www.npmjs.com/package/pg), [postgres](https://www.npmjs.com/package/postgres) or [Bun SQL](https://bun.sh/docs/api/sql).
 - MySQL via [mysql2](https://www.npmjs.com/package/mysql2).
 - SQLite via [sqlite3](https://www.npmjs.com/package/better-sqlite3).
 
@@ -291,6 +291,26 @@ sql:
       driver: postgres # npm package name
 ```
 
+### PostgreSQL and Bun SQL
+
+```yaml
+version: '2'
+plugins:
+- name: ts
+  wasm:
+    url: https://downloads.sqlc.dev/plugin/sqlc-gen-typescript_0.1.4.wasm
+    sha256: e8628d800e9c48197e8cbbe289c74839f869cb282b2717ffc85eb622e81a036c
+sql:
+- schema: "schema.sql"
+  queries: "query.sql"
+  engine: postgresql
+  codegen:
+  - out: db
+    plugin: ts
+    options:
+      runtime: bun
+      driver: bun-sql # to use native SQL library of Bun 1.2
+```
 
 ### MySQL and mysql2
 
