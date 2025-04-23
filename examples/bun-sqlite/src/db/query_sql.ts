@@ -65,6 +65,9 @@ export interface CreateAuthorArgs {
     bio: string | null;
 }
 
+/**
+ * Create a new author.
+ */
 export async function createAuthor(database: Database, args: CreateAuthorArgs): Promise<void> {
     const stmt = database.prepare(createAuthorQuery);
     stmt.run(args.name, args.bio);
