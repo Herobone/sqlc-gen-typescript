@@ -19,6 +19,6 @@ jobs:
     - run: npm install
     - run: npx tsc --noEmit
     - run: npx esbuild --bundle src/app.ts --tree-shaking=true --format=esm --target=es2020 --outfile=out.js
-    - run: ./javy-x86_64-linux-v5.0.3 compile out.js -o examples/plugin.wasm
+    - run: ./javy-x86_64-linux-v5.0.3 build out.js -o examples/plugin.wasm
     - run: sqlc -f sqlc.dev.yaml diff
       working-directory: examples
