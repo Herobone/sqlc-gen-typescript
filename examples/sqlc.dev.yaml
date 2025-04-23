@@ -88,3 +88,12 @@ sql:
     options:
       runtime: bun
       driver: bun-sqlite
+- schema: "authors/sqlite/schema.sql"
+  queries: "authors/sqlite/query.sql"
+  engine: "sqlite"
+  codegen:
+  - plugin: ts
+    out: node-turso/src/db
+    options:
+      runtime: node
+      driver: turso
