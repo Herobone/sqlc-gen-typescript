@@ -12,8 +12,8 @@ export interface GetAuthorArgs {
 
 export interface GetAuthorRow {
     id: any;
-    name: any;
-    bio: any | null;
+    name: string;
+    bio: string | null;
 }
 
 export async function getAuthor(database: Database, args: GetAuthorArgs): Promise<GetAuthorRow | null> {
@@ -31,8 +31,8 @@ ORDER BY name`;
 
 export interface ListAuthorsRow {
     id: any;
-    name: any;
-    bio: any | null;
+    name: string;
+    bio: string | null;
 }
 
 export async function listAuthors(database: Database): Promise<ListAuthorsRow[]> {
@@ -49,8 +49,8 @@ INSERT INTO authors (
 )`;
 
 export interface CreateAuthorArgs {
-    name: any;
-    bio: any | null;
+    name: string;
+    bio: string | null;
 }
 
 /**
