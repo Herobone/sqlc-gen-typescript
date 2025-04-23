@@ -3,7 +3,8 @@ name: Release Plugin
 on:
   push:
     tags:
-      - 'v*' # Trigger on pushes to tags starting with 'v' (e.g., v0.1.4)
+      - "**" # Trigger on pushes to tags
+  workflow_dispatch: # Allow manual triggering of the workflow
 
 jobs:
   build_and_release:
@@ -17,20 +18,20 @@ jobs:
       - name: Setup sqlc
         uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.29.0'
+          sqlc-version: "1.29.0"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Specify a Node.js version
+          node-version: "20" # Specify a Node.js version
 
       - name: Download Javy
         run: |
-            JAVY_VERSION="v5.0.3"
-            wget https://github.com/bytecodealliance/javy/releases/download/${JAVY_VERSION}/javy-x86_64-linux-${JAVY_VERSION}.gz
-            gzip -d javy-x86_64-linux-${JAVY_VERSION}.gz
-            chmod +x javy-x86_64-linux-${JAVY_VERSION}
-            mv javy-x86_64-linux-${JAVY_VERSION} javy
+          JAVY_VERSION="v5.0.3"
+          wget https://github.com/bytecodealliance/javy/releases/download/${JAVY_VERSION}/javy-x86_64-linux-${JAVY_VERSION}.gz
+          gzip -d javy-x86_64-linux-${JAVY_VERSION}.gz
+          chmod +x javy-x86_64-linux-${JAVY_VERSION}
+          mv javy-x86_64-linux-${JAVY_VERSION} javy
 
       - name: Install dependencies
         run: npm install
