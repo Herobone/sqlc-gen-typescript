@@ -237,6 +237,8 @@ function readInput(): GenerateRequest {
 }
 
 function queryDecl(name: string, sql: string) {
+  const escaped = sql.replace(/`/g, '\\`');
+
   return factory.createVariableStatement(
     [factory.createToken(SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
@@ -245,7 +247,7 @@ function queryDecl(name: string, sql: string) {
           factory.createIdentifier(name),
           undefined,
           undefined,
-          factory.createNoSubstitutionTemplateLiteral(sql, sql)
+          factory.createNoSubstitutionTemplateLiteral(escaped, escaped)
         ),
       ],
       NodeFlags.Const //| NodeFlags.Constant | NodeFlags.Constant
