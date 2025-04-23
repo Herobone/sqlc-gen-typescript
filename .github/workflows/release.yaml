@@ -1,0 +1,130 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on pushes to tags starting with 'v' (e.g., v0.1.4)
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to get previous tags for changelog
+
+      - name: Setup sqlc
+        uses: sqlc-dev/setup-sqlc@v4
+        with:
+          sqlc-version: '1.29.0'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Specify a Node.js version
+
+      - name: Download Javy
+        run: |
+            JAVY_VERSION="v5.0.3"
+            wget https://github.com/bytecodealliance/javy/releases/download/${JAVY_VERSION}/javy-x86_64-linux-${JAVY_VERSION}.gz
+            gzip -d javy-x86_64-linux-${JAVY_VERSION}.gz
+            chmod +x javy-x86_64-linux-${JAVY_VERSION}
+            mv javy-x86_64-linux-${JAVY_VERSION} javy
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build JavaScript
+        run: npx esbuild --bundle src/app.ts --tree-shaking=true --format=esm --target=es2020 --outfile=out.js
+
+      - name: Build WASM plugin
+        run: ./javy build out.js -o examples/plugin.wasm
+
+      - name: Calculate WASM SHA256 hash
+        id: hash_wasm
+        run: |
+          WASM_FILE="examples/plugin.wasm"
+          SHA256_HASH=$(sha256sum $WASM_FILE | awk '{ print $1 }')
+          echo "sha256_hash=$SHA256_HASH" >> $GITHUB_OUTPUT
+
+      - name: Get previous tag for changelog
+        id: get_previous_tag
+        run: |
+          # Find the previous tag. If none exists, use a default or indicate it.
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Generate Changelog
+        id: generate_changelog
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+          PREVIOUS_TAG="${{ steps.get_previous_tag.outputs.previous_tag }}"
+          CHANGELOG="# Changelog\n"
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG+="- Initial release\n"
+            # Get all commits since the beginning if no previous tag
+            git log --pretty=format:"- %s" >> changelog.txt
+          else
+            # Get commits between previous tag and current tag
+            git log --pretty=format:"- %s" "$PREVIOUS_TAG..$CURRENT_TAG" >> changelog.txt
+          fi
+
+          CHANGELOG+=$(cat changelog.txt)
+          # Escape newlines for the output variable
+          ESCAPED_CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          echo "changelog=$ESCAPED_CHANGELOG" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Create Release Notes
+        id: create_release_notes
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+          WASM_HASH="${{ steps.hash_wasm.outputs.sha256_hash }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/plugin.wasm"
+          CHANGELOG="${{ steps.generate_changelog.outputs.changelog }}"
+
+          RELEASE_NOTES="Configuration\n"
+          RELEASE_NOTES+="```\n"
+          RELEASE_NOTES+="version: '2'\n"
+          RELEASE_NOTES+="plugins:\n"
+          RELEASE_NOTES+="  name: ts\n"
+          RELEASE_NOTES+="  wasm:\n"
+          RELEASE_NOTES+="    url: ${WASM_URL}\n"
+          RELEASE_NOTES+="    sha256: ${WASM_HASH}\n"
+          RELEASE_NOTES+="```\n\n"
+          RELEASE_NOTES+="${CHANGELOG}"
+
+          # Escape newlines for the output variable
+          ESCAPED_RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
+          echo "release_notes=$ESCAPED_RELEASE_NOTES" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          body: ${{ steps.create_release_notes.outputs.release_notes }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: examples/plugin.wasm
+          asset_name: plugin.wasm
+          asset_content_type: application/wasm
