@@ -52,35 +52,13 @@ jobs:
           SHA256_HASH=$(sha256sum $WASM_FILE | awk '{ print $1 }')
           echo "sha256_hash=$SHA256_HASH" >> $GITHUB_OUTPUT
 
-      - name: Get previous tag for changelog
-        id: get_previous_tag
-        run: |
-          # Find the previous tag. If none exists, use a default or indicate it.
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Generate Changelog
-        id: generate_changelog
-        run: |
-          CURRENT_TAG="${{ github.ref_name }}"
-          PREVIOUS_TAG="${{ steps.get_previous_tag.outputs.previous_tag }}"
-          CHANGELOG="# Changelog\n"
-
-          if [ -z "$PREVIOUS_TAG" ]; then
-            CHANGELOG+="- Initial release\n"
-            # Get all commits since the beginning if no previous tag
-            git log --pretty=format:"- %s" >> changelog.txt
-          else
-            # Get commits between previous tag and current tag
-            git log --pretty=format:"- %s" "$PREVIOUS_TAG..$CURRENT_TAG" >> changelog.txt
-          fi
-
-          CHANGELOG+=$(cat changelog.txt)
-          # Escape newlines for the output variable
-          ESCAPED_CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          echo "changelog=$ESCAPED_CHANGELOG" >> $GITHUB_OUTPUT
-        shell: bash
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ github.ref_name }}
+          writeToFile: false
 
       - name: Create Release Notes
         id: create_release_notes
@@ -90,7 +68,7 @@ jobs:
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
           WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/plugin.wasm"
-          CHANGELOG="${{ steps.generate_changelog.outputs.changelog }}"
+          CHANGELOG="${{ steps.changelog.outputs.changes }}"
 
           RELEASE_NOTES="Configuration\n"
           RELEASE_NOTES+="\`\`\`\n"
@@ -118,6 +96,7 @@ jobs:
           release_name: Release ${{ github.ref_name }}
           body: ${{ steps.create_release_notes.outputs.release_notes }}
           draft: false
+          makeLatest: true
           prerelease: false
 
       - name: Upload Release Asset
