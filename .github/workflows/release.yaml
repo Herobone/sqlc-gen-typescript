@@ -93,14 +93,14 @@ jobs:
           CHANGELOG="${{ steps.generate_changelog.outputs.changelog }}"
 
           RELEASE_NOTES="Configuration\n"
-          RELEASE_NOTES+="```\n"
+          RELEASE_NOTES+="\`\`\`\n"
           RELEASE_NOTES+="version: '2'\n"
           RELEASE_NOTES+="plugins:\n"
           RELEASE_NOTES+="  name: ts\n"
           RELEASE_NOTES+="  wasm:\n"
           RELEASE_NOTES+="    url: ${WASM_URL}\n"
           RELEASE_NOTES+="    sha256: ${WASM_HASH}\n"
-          RELEASE_NOTES+="```\n\n"
+          RELEASE_NOTES+="\`\`\`\n\n"
           RELEASE_NOTES+="${CHANGELOG}"
 
           # Escape newlines for the output variable
