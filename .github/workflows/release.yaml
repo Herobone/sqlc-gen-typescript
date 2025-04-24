@@ -58,7 +58,6 @@ jobs:
         with:
           token: ${{ github.token }}
           tag: ${{ github.ref_name }}
-          writeToFile: false
 
       - name: Create Release Notes
         id: create_release_notes
@@ -69,6 +68,14 @@ jobs:
           REPO_NAME="${{ github.event.repository.name }}"
           WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/plugin.wasm"
           CHANGELOG="${{ steps.changelog.outputs.changes }}"
+          # Read raw changelog content and escape backticks for bash compatibility
+          if [ -f CHANGELOG.md ]; then
+            # Use sed to replace backticks with escaped backticks
+            CHANGELOG_CONTENT+=$(cat CHANGELOG.md | sed 's/`/\\`/g')
+          fi
+
+          # Escape newlines for the output variable
+          ESCAPED_CHANGELOG="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
 
           RELEASE_NOTES="Configuration\n"
           RELEASE_NOTES+="\`\`\`\n"
@@ -79,7 +86,7 @@ jobs:
           RELEASE_NOTES+="    url: ${WASM_URL}\n"
           RELEASE_NOTES+="    sha256: ${WASM_HASH}\n"
           RELEASE_NOTES+="\`\`\`\n\n"
-          RELEASE_NOTES+="${CHANGELOG}"
+          RELEASE_NOTES+="${ESCAPED_CHANGELOG}"
 
           # Escape newlines for the output variable
           ESCAPED_RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
