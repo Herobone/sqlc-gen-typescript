@@ -68,7 +68,6 @@ jobs:
           WASM_HASH="${{ steps.hash_wasm.outputs.sha256_hash }}"
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
-          CHANGELOG="${{ steps.changelog.outputs.changes }}"
           WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/sqlc-gen-typescript.wasm"
 
           RELEASE_NOTES="## Configuration\n"
@@ -83,7 +82,7 @@ jobs:
           RELEASE_NOTES+="## Changelog\n"
 
           echo -e $RELEASE_NOTES > release.md
-          echo -e $CHANGELOG >> release.md
+          echo -e ${{ steps.changelog.outputs.changes }} >> release.md
         shell: bash
 
       - name: Release
