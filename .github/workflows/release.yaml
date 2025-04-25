@@ -82,7 +82,7 @@ jobs:
           RELEASE_NOTES+="## Changelog\n"
 
           echo -e $RELEASE_NOTES > release.md
-          echo -e ${{ steps.changelog.outputs.changes }} >> release.md
+          echo -e "${{ steps.changelog.outputs.changes }}" >> release.md
         shell: bash
 
       - name: Release
