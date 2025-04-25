@@ -4,11 +4,12 @@ on:
   push:
     tags:
       - "**" # Trigger on pushes to tags
-  workflow_dispatch: # Allow manual triggering of the workflow
 
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,12 +44,12 @@ jobs:
         run: npx esbuild --bundle src/app.ts --tree-shaking=true --format=esm --target=es2020 --outfile=out.js
 
       - name: Build WASM plugin
-        run: ./javy build out.js -o examples/plugin.wasm
+        run: ./javy build out.js -o sqlc-gen-typescript.wasm
 
       - name: Calculate WASM SHA256 hash
         id: hash_wasm
         run: |
-          WASM_FILE="examples/plugin.wasm"
+          WASM_FILE="sqlc-gen-typescript.wasm"
           SHA256_HASH=$(sha256sum $WASM_FILE | awk '{ print $1 }')
           echo "sha256_hash=$SHA256_HASH" >> $GITHUB_OUTPUT
 
@@ -58,6 +59,7 @@ jobs:
         with:
           token: ${{ github.token }}
           tag: ${{ github.ref_name }}
+          
 
       - name: Create Release Notes
         id: create_release_notes
@@ -66,18 +68,10 @@ jobs:
           WASM_HASH="${{ steps.hash_wasm.outputs.sha256_hash }}"
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
-          WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/plugin.wasm"
           CHANGELOG="${{ steps.changelog.outputs.changes }}"
-          # Read raw changelog content and escape backticks for bash compatibility
-          if [ -f CHANGELOG.md ]; then
-            # Use sed to replace backticks with escaped backticks
-            CHANGELOG_CONTENT+=$(cat CHANGELOG.md | sed 's/`/\\`/g')
-          fi
+          WASM_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${CURRENT_TAG}/sqlc-gen-typescript.wasm"
 
-          # Escape newlines for the output variable
-          ESCAPED_CHANGELOG="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
-
-          RELEASE_NOTES="Configuration\n"
+          RELEASE_NOTES="## Configuration\n"
           RELEASE_NOTES+="\`\`\`\n"
           RELEASE_NOTES+="version: '2'\n"
           RELEASE_NOTES+="plugins:\n"
@@ -85,33 +79,18 @@ jobs:
           RELEASE_NOTES+="  wasm:\n"
           RELEASE_NOTES+="    url: ${WASM_URL}\n"
           RELEASE_NOTES+="    sha256: ${WASM_HASH}\n"
-          RELEASE_NOTES+="\`\`\`\n\n"
-          RELEASE_NOTES+="${ESCAPED_CHANGELOG}"
+          RELEASE_NOTES+="\`\`\`\n"
+          RELEASE_NOTES+="## Changelog\n"
 
-          # Escape newlines for the output variable
-          ESCAPED_RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
-          echo "release_notes=$ESCAPED_RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo -e $RELEASE_NOTES > release.md
+          echo -e $CHANGELOG >> release.md
         shell: bash
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          body: ${{ steps.create_release_notes.outputs.release_notes }}
-          draft: false
-          makeLatest: true
-          prerelease: false
+          body_path: release.md
+          files: sqlc-gen-typescript.wasm
+          make_latest: "true"
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: examples/plugin.wasm
-          asset_name: plugin.wasm
-          asset_content_type: application/wasm
